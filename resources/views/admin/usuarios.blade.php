@@ -25,7 +25,12 @@
             </div>
             <div class="form-group">
                 <label>Contraseña *</label>
-                <input type="password" id="new-password" placeholder="Mínimo 6 caracteres">
+                <div style="position:relative;">
+                    <input type="password" id="new-password" placeholder="Mínimo 6 caracteres" style="padding-right:40px;">
+                    <button type="button" class="pw-toggle" onclick="togglePw('new-password', this)" aria-label="Mostrar contraseña">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
             <div class="form-group">
                 <label>Rol</label>
@@ -76,9 +81,30 @@
 
 @endsection
 
+@push('styles')
+<style>
+    .pw-toggle {
+        position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+        background: none; border: none; color: #64748b; cursor: pointer;
+        padding: 6px 8px; font-size: 14px; display: flex; align-items: center;
+        transition: color .15s;
+    }
+    .pw-toggle:hover { color: #e2e8f0; }
+</style>
+@endpush
+
 @push('scripts')
 <script>
     const CURRENT_USER_ID = {{ (int) ($currentUser->id ?? 0) }};
+
+    function togglePw(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon  = btn.querySelector('i');
+        const show  = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+        btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    }
 
     function escapeHtml(str) {
         return String(str ?? '')
@@ -219,14 +245,43 @@
 
     async function openPassword(userId, userName) {
         const { value: pw } = await Swal.fire({
-            title: `Nueva contraseña`,
-            text: `Cambiar contraseña de ${userName}`,
-            input: 'password',
-            inputAttributes: { placeholder:'Mínimo 6 caracteres', autocomplete:'new-password' },
+            title: 'Nueva contraseña',
+            text: `Cambiar contraseña de ${userName} — úsalo si olvidó la suya o tuvo algún problema para entrar.`,
+            html: `
+                <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;color:#475569;">Nueva contraseña</label>
+                    <div style="position:relative;">
+                        <input id="swal-pw-new" type="password" class="swal2-input" style="margin:0;padding-right:40px;" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                        <button type="button" class="pw-toggle" onclick="togglePw('swal-pw-new', this)" aria-label="Mostrar contraseña">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;color:#475569;">Confirmar contraseña</label>
+                    <div style="position:relative;">
+                        <input id="swal-pw-confirm" type="password" class="swal2-input" style="margin:0;padding-right:40px;" placeholder="Repite la contraseña" autocomplete="new-password">
+                        <button type="button" class="pw-toggle" onclick="togglePw('swal-pw-confirm', this)" aria-label="Mostrar contraseña">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            `,
             showCancelButton: true,
             confirmButtonText: 'Actualizar',
             cancelButtonText: 'Cancelar',
-            inputValidator: v => (!v || v.length < 6) ? 'Debe tener al menos 6 caracteres' : null,
+            focusConfirm: false,
+            preConfirm: () => {
+                const nueva     = document.getElementById('swal-pw-new').value;
+                const confirmar = document.getElementById('swal-pw-confirm').value;
+                if (!nueva || nueva.length < 6) {
+                    Swal.showValidationMessage('Debe tener al menos 6 caracteres');
+                    return false;
+                }
+                if (nueva !== confirmar) {
+                    Swal.showValidationMessage('Las contraseñas no coinciden');
+                    return false;
+                }
+                return nueva;
+            },
         });
         if (!pw) return;
         try {

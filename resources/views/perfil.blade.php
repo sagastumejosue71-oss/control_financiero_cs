@@ -7,7 +7,17 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%BC%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>*, *::before, *::after { font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; }</style>
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <style>
+        *, *::before, *::after { font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; }
+        .pw-toggle {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #64748b; cursor: pointer;
+            padding: 6px 8px; font-size: 15px; display: flex; align-items: center;
+            transition: color .15s;
+        }
+        .pw-toggle:hover { color: #cbd5e1; }
+    </style>
 </head>
 <body style="min-height:100vh;margin:0;background:#0f172a;">
 
@@ -112,32 +122,47 @@
                     <label style="display:block;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">
                         Contraseña actual
                     </label>
-                    <input type="password" name="password_actual" autocomplete="current-password"
-                        style="width:100%;background:#0f172a;border:1px solid #475569;color:#f8fafc;border-radius:10px;padding:11px 16px;font-size:14px;outline:none;box-sizing:border-box;transition:border-color .15s;"
-                        placeholder="••••••••"
-                        onfocus="this.style.borderColor='#3b82f6'"
-                        onblur="this.style.borderColor='#475569'">
+                    <div style="position:relative;">
+                        <input type="password" name="password_actual" id="pw-actual" autocomplete="current-password"
+                            style="width:100%;background:#0f172a;border:1px solid #475569;color:#f8fafc;border-radius:10px;padding:11px 40px 11px 16px;font-size:14px;outline:none;box-sizing:border-box;transition:border-color .15s;"
+                            placeholder="••••••••"
+                            onfocus="this.style.borderColor='#3b82f6'"
+                            onblur="this.style.borderColor='#475569'">
+                        <button type="button" class="pw-toggle" onclick="togglePw('pw-actual', this)" aria-label="Mostrar contraseña">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <div style="margin-bottom:14px;">
                     <label style="display:block;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">
                         Nueva contraseña
                     </label>
-                    <input type="password" name="password" autocomplete="new-password"
-                        style="width:100%;background:#0f172a;border:1px solid #475569;color:#f8fafc;border-radius:10px;padding:11px 16px;font-size:14px;outline:none;box-sizing:border-box;transition:border-color .15s;"
-                        placeholder="Mínimo 6 caracteres"
-                        onfocus="this.style.borderColor='#3b82f6'"
-                        onblur="this.style.borderColor='#475569'">
+                    <div style="position:relative;">
+                        <input type="password" name="password" id="pw-nueva" autocomplete="new-password"
+                            style="width:100%;background:#0f172a;border:1px solid #475569;color:#f8fafc;border-radius:10px;padding:11px 40px 11px 16px;font-size:14px;outline:none;box-sizing:border-box;transition:border-color .15s;"
+                            placeholder="Mínimo 6 caracteres"
+                            onfocus="this.style.borderColor='#3b82f6'"
+                            onblur="this.style.borderColor='#475569'">
+                        <button type="button" class="pw-toggle" onclick="togglePw('pw-nueva', this)" aria-label="Mostrar contraseña">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                     @error('password')<div style="color:#fca5a5;font-size:12px;margin-top:4px;">{{ $message }}</div>@enderror
                 </div>
                 <div style="margin-bottom:20px;">
                     <label style="display:block;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">
                         Confirmar nueva contraseña
                     </label>
-                    <input type="password" name="password_confirmation" autocomplete="new-password"
-                        style="width:100%;background:#0f172a;border:1px solid #475569;color:#f8fafc;border-radius:10px;padding:11px 16px;font-size:14px;outline:none;box-sizing:border-box;transition:border-color .15s;"
-                        placeholder="Repite la nueva contraseña"
-                        onfocus="this.style.borderColor='#3b82f6'"
-                        onblur="this.style.borderColor='#475569'">
+                    <div style="position:relative;">
+                        <input type="password" name="password_confirmation" id="pw-confirmar" autocomplete="new-password"
+                            style="width:100%;background:#0f172a;border:1px solid #475569;color:#f8fafc;border-radius:10px;padding:11px 40px 11px 16px;font-size:14px;outline:none;box-sizing:border-box;transition:border-color .15s;"
+                            placeholder="Repite la nueva contraseña"
+                            onfocus="this.style.borderColor='#3b82f6'"
+                            onblur="this.style.borderColor='#475569'">
+                        <button type="button" class="pw-toggle" onclick="togglePw('pw-confirmar', this)" aria-label="Mostrar contraseña">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit"
                     style="background:#0f4c1a;border:1px solid #16a34a;color:#86efac;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;"
@@ -150,5 +175,16 @@
         </div>
 
     </div>
+
+    <script>
+        function togglePw(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon  = btn.querySelector('i');
+            const show  = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+            btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        }
+    </script>
 </body>
 </html>
