@@ -92,10 +92,8 @@ class UserController extends Controller
             }
         }
 
-        $dataFile = storage_path('app/finanzas_data_' . (int) $user->id . '.json');
-        if (file_exists($dataFile)) {
-            @unlink($dataFile);
-        }
+        // Los datos financieros del usuario (tabla finanzas_data) se eliminan
+        // solos por el cascadeOnDelete() de la relación con users.
 
         $this->auditar($request, 'USUARIO_ELIMINADO', [
             'usuario_id'    => $user->id,

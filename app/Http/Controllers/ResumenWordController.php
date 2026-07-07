@@ -7,6 +7,7 @@ use App\Support\FinanzasCrypto;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class ResumenWordController extends Controller
 {
@@ -21,8 +22,7 @@ class ResumenWordController extends Controller
         }
 
         $user = User::find($userId);
-        $path = storage_path('app/finanzas_data_' . (int) $userId . '.json');
-        $data = $this->loadData($path);
+        $data = $this->loadData($userId);
 
         $html     = $this->renderPdfHtml($user, $data);
         $filename = 'resumen_finanzas_' . date('Y-m-d') . '.pdf';
@@ -51,8 +51,7 @@ class ResumenWordController extends Controller
         }
 
         $user = User::find($userId);
-        $path = storage_path('app/finanzas_data_' . (int) $userId . '.json');
-        $data = $this->loadData($path);
+        $data = $this->loadData($userId);
 
         $html = $this->renderHtml($user, $data);
         $filename = 'resumen_finanzas_' . date('Y-m-d') . '.doc';
@@ -65,7 +64,7 @@ class ResumenWordController extends Controller
         ]);
     }
 
-    private function loadData(string $path): array
+    private function loadData(int $userId): array
     {
         $default = [
             'ingresos' => [], 'gastos_fijos' => [], 'gastos_variables' => [],
@@ -73,8 +72,11 @@ class ResumenWordController extends Controller
             'metas_ahorro' => [], 'expansion_scenarios' => [],
             'expansion_active_id' => null, 'exchange_rate' => 7.70,
         ];
-        if (!file_exists($path)) return $default;
-        $raw = FinanzasCrypto::decode(file_get_contents($path));
+
+        $row = DB::table('finanzas_data')->where('user_id', $userId)->first();
+        if (!$row) return $default;
+
+        $raw = FinanzasCrypto::decode($row->data);
         return is_array($raw) ? array_merge($default, $raw) : $default;
     }
 

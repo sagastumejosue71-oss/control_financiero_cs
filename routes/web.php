@@ -2,10 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Support\FinanzasCrypto;
+use App\Support\FinanzasDataDefaults;
 
 Route::get('/', function () {
     if (!session('user_id')) return redirect('/login');
@@ -242,114 +244,57 @@ Route::get('/finanzas', function () {
     ]);
 });
 
-/**
- * Devuelve la ruta del archivo de datos para el usuario actualmente logueado.
- * Cada usuario tiene su propio JSON aislado: storage/app/finanzas_data_{user_id}.json
- * De esta manera, un usuario nuevo NO ve datos de otros y empieza con todo en 0.
- */
-function _finanzasDataPath(): ?string {
-    $userId = session('user_id');
-    if (!$userId) return null;
-    return storage_path('app/finanzas_data_' . (int) $userId . '.json');
-}
-
-function _finanzasDataDefault(): array {
-    return [
-        'ingresos'             => [],
-        'gastos_fijos'         => [],
-        'gastos_variables'     => [],
-        'deudas'               => [],
-        'pagos_realizados'     => [],
-        'historial_mensual'    => [],
-        'metas_ahorro'         => [],
-        'expansion_scenarios'  => [],
-        'expansion_active_id'  => null,
-        'exchange_rate'        => 7.70,
-        '_rev'                 => 0,
-    ];
-}
-
 Route::get('/api/finanzas-data', function () {
-    $path = _finanzasDataPath();
-    if (!$path) return response()->json(['error' => 'No autorizado'], 401);
+    $userId = session('user_id');
+    if (!$userId) return response()->json(['error' => 'No autorizado'], 401);
 
-    // Migración suave: el primer admin (id menor) hereda el archivo legacy compartido
-    $legacy = storage_path('app/finanzas_data.json');
-    if (!file_exists($path) && file_exists($legacy)) {
-        $firstAdmin = \App\Models\User::where('role', 'admin')->orderBy('id', 'asc')->first();
-        if ($firstAdmin && (int) session('user_id') === (int) $firstAdmin->id) {
-            @mkdir(dirname($path), 0775, true);
-            @copy($legacy, $path);
-            @rename($legacy, $legacy . '.migrated_' . date('Ymd_His'));
-        }
+    $row = DB::table('finanzas_data')->where('user_id', $userId)->first();
+
+    if (!$row) {
+        return response()->json(FinanzasDataDefaults::array());
     }
 
-    if (!file_exists($path)) {
-        return response()->json(_finanzasDataDefault());
-    }
+    $data   = FinanzasCrypto::decode($row->data);
+    $result = is_array($data) ? array_merge(FinanzasDataDefaults::array(), $data) : FinanzasDataDefaults::array();
+    $result['_rev'] = $row->rev;
 
-    // Lectura con lock compartido: evita leer un archivo a medio escribir.
-    $fp  = fopen($path, 'r');
-    $raw = false;
-    if ($fp) {
-        flock($fp, LOCK_SH);
-        $raw = stream_get_contents($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-    }
-    $data = $raw !== false ? FinanzasCrypto::decode($raw) : null;
-    return response()->json(is_array($data) ? array_merge(_finanzasDataDefault(), $data) : _finanzasDataDefault());
+    return response()->json($result);
 });
 
 Route::post('/api/finanzas-data', function (Request $request) {
-    $path = _finanzasDataPath();
-    if (!$path) return response()->json(['error' => 'No autorizado'], 401);
-    @mkdir(dirname($path), 0775, true);
+    $userId = session('user_id');
+    if (!$userId) return response()->json(['error' => 'No autorizado'], 401);
 
     $data = $request->all();
     $clientRev = (int) ($data['_rev'] ?? 0);
+    unset($data['_rev']); // el rev vive en su propia columna, no dentro del blob
 
-    // Escritura con lock exclusivo + control de versión optimista: si otra
-    // pestaña/sesión del mismo usuario ya guardó una versión más nueva,
-    // rechazamos este guardado en vez de sobreescribirla silenciosamente.
-    $fp = fopen($path, 'c+');
-    if ($fp === false) {
-        return response()->json(['error' => 'No se pudo abrir el archivo de datos'], 500);
-    }
+    // Transacción + lock de fila: control de concurrencia optimista real a
+    // nivel de base de datos (equivalente al flock() que usábamos con
+    // archivos, pero portable entre SQLite/MySQL/Postgres).
+    $result = DB::transaction(function () use ($userId, $data, $clientRev) {
+        $row = DB::table('finanzas_data')->where('user_id', $userId)->lockForUpdate()->first();
+        $currentRev = $row?->rev ?? 0;
 
-    flock($fp, LOCK_EX);
-    $currentRaw = stream_get_contents($fp);
-    $current    = $currentRaw !== '' ? FinanzasCrypto::decode($currentRaw) : null;
-    $currentRev = is_array($current) ? (int) ($current['_rev'] ?? 0) : 0;
+        if ($currentRev > $clientRev) {
+            return ['status' => 409, 'body' => [
+                'error'   => 'conflict',
+                'message' => 'Estos datos se actualizaron en otra sesión.',
+            ]];
+        }
 
-    if ($currentRaw !== '' && !is_array($current)) {
-        // El archivo existente está corrupto: no lo pisamos a ciegas,
-        // mejor fallar explícitamente para poder investigar.
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        return response()->json(['error' => 'Datos existentes corruptos, contacta al administrador'], 500);
-    }
+        $newRev = $currentRev + 1;
+        $encrypted = FinanzasCrypto::encode($data);
 
-    if ($currentRev > $clientRev) {
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        return response()->json([
-            'error'   => 'conflict',
-            'message' => 'Estos datos se actualizaron en otra sesión.',
-        ], 409);
-    }
+        DB::table('finanzas_data')->updateOrInsert(
+            ['user_id' => $userId],
+            ['data' => $encrypted, 'rev' => $newRev, 'updated_at' => now(), 'created_at' => $row?->created_at ?? now()]
+        );
 
-    $data['_rev'] = $currentRev + 1;
-    $encrypted = FinanzasCrypto::encode($data);
+        return ['status' => 200, 'body' => ['ok' => true, 'rev' => $newRev]];
+    });
 
-    ftruncate($fp, 0);
-    rewind($fp);
-    fwrite($fp, $encrypted);
-    fflush($fp);
-    flock($fp, LOCK_UN);
-    fclose($fp);
-
-    return response()->json(['ok' => true, 'rev' => $data['_rev']]);
+    return response()->json($result['body'], $result['status']);
 });
 
 Route::get('/api/exportar-resumen-word', [\App\Http\Controllers\ResumenWordController::class, 'exportar']);
