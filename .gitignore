@@ -1,0 +1,85 @@
+# ============================================================
+#  .gitignore — Finanzas GT  (Laravel 13 / PHP 8.4)
+#  Generado con criterios de ciberseguridad: ningún secreto,
+#  credencial, dato de usuario ni archivo runtime debe
+#  llegar al repositorio.
+# ============================================================
+
+# ── Secretos y entorno ───────────────────────────────────────
+.env
+.env.*
+!.env.example
+auth.json
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# ── Base de datos (¡contiene datos de usuarios!) ─────────────
+/database/*.sqlite
+/database/*.sqlite-shm
+/database/*.sqlite-wal
+*.sql
+*.dump
+*.db
+
+# ── Datos financieros por usuario (muy sensibles) ────────────
+/storage/app/finanzas_data_*.json
+/storage/app/finanzas_data.json
+/storage/app/finanzas_data.json.migrated_*
+/storage/app/backups/
+
+# ── Sesiones y caché en disco ────────────────────────────────
+/storage/framework/sessions/
+/storage/framework/cache/data/
+/storage/framework/views/
+/storage/pail/
+
+# ── Logs (pueden contener emails, IPs, datos personales) ─────
+*.log
+/storage/logs/
+
+# ── Dependencias ─────────────────────────────────────────────
+/vendor/
+/node_modules/
+
+# ── Build de assets ──────────────────────────────────────────
+/public/build/
+/public/hot
+/public/storage
+/public/fonts-manifest.dev.json
+
+# ── Documentación interna (no exponer en repo público) ───────
+ADMIN_GUIDE.md
+CURL_EXAMPLES.md
+
+# ── Caché de herramientas ────────────────────────────────────
+.phpunit.result.cache
+/.phpunit.cache
+_ide_helper.php
+_ide_helper_models.php
+.phpactor.json
+
+# ── IDEs y editores ──────────────────────────────────────────
+/.idea/
+/.vscode/
+/.cursor/
+/.nova/
+/.zed/
+/.codex/
+/.claude/
+.DS_Store
+Thumbs.db
+
+# ── Laravel Homestead (si se usa localmente) ─────────────────
+Homestead.json
+Homestead.yaml
+
+# ── Archivos de sistema y temporales ─────────────────────────
+*.bak
+*.tmp
+*.swp
+*.swo
+*~
