@@ -300,6 +300,11 @@ Route::post('/api/finanzas-data', function (Request $request) {
 Route::get('/api/exportar-resumen-word', [\App\Http\Controllers\ResumenWordController::class, 'exportar']);
 Route::get('/api/exportar-resumen-pdf',  [\App\Http\Controllers\ResumenWordController::class, 'exportarPdf']);
 
+// Chat con IA (Groq) — asistente financiero
+Route::get('/api/chat',       [\App\Http\Controllers\ChatController::class, 'index']);
+Route::post('/api/chat',      [\App\Http\Controllers\ChatController::class, 'send']);
+Route::delete('/api/chat',    [\App\Http\Controllers\ChatController::class, 'clear']);
+
 // =====================================================================
 // PANEL DE ADMINISTRACIÓN (interfaz separada)
 // =====================================================================

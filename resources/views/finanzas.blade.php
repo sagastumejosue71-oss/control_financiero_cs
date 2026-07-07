@@ -247,6 +247,37 @@
         body.dark-mode .exchange-widget { background: #0f172a !important; }
         body.dark-mode .ew-hint { color: #334155 !important; }
 
+        /* CHAT IA */
+        #chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 210px); min-height: 440px; }
+        #chat-mensajes { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+        .chat-msg { display: flex; gap: 10px; max-width: 80%; }
+        .chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+        .chat-msg .chat-avatar {
+            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+        }
+        .chat-msg.user .chat-avatar { background: #3b82f6; color: white; }
+        .chat-msg.assistant .chat-avatar { background: #ede9fe; color: #7c3aed; }
+        .chat-bubble { padding: 10px 14px; border-radius: 14px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
+        .chat-msg.user .chat-bubble { background: #3b82f6; color: white; border-bottom-right-radius: 4px; }
+        .chat-msg.assistant .chat-bubble { background: #f1f5f9; color: #1e293b; border-bottom-left-radius: 4px; }
+        .chat-msg.assistant.error .chat-bubble { background: #fef2f2; color: #991b1b; }
+        .chat-empty { margin: auto; text-align: center; color: #94a3b8; padding: 20px; }
+        .chat-empty .bi { font-size: 34px; display: block; margin-bottom: 10px; color: #c4b5fd; }
+        .chat-typing { display: flex; gap: 4px; padding: 4px 0; }
+        .chat-typing span { width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; animation: chatTyping 1s infinite ease-in-out; }
+        .chat-typing span:nth-child(2) { animation-delay: .15s; }
+        .chat-typing span:nth-child(3) { animation-delay: .3s; }
+        @keyframes chatTyping { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+        #chat-input-row { padding: 14px 20px; border-top: 1px solid #f1f5f9; display: flex; gap: 10px; }
+        #chat-input { flex: 1; padding: 11px 16px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 14px; outline: none; transition: border .15s; }
+        #chat-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
+
+        body.dark-mode .chat-msg.assistant .chat-bubble { background: #1e293b !important; color: #e2e8f0 !important; }
+        body.dark-mode .chat-msg.assistant.error .chat-bubble { background: #450a0a !important; color: #fca5a5 !important; }
+        body.dark-mode #chat-input-row { border-color: #334155 !important; }
+        body.dark-mode #chat-input { background: #0f172a !important; border-color: #475569 !important; color: #f8fafc !important; }
+
         /* HAMBURGER + MOBILE OVERLAY */
         #hamburger { display: none; background: none; border: none; cursor: pointer; padding: 6px 8px; font-size: 22px; color: #475569; border-radius: 8px; line-height: 1; }
         #hamburger:hover { background: #f1f5f9; }
@@ -297,6 +328,9 @@
         </a>
         <a class="nav-item" onclick="navigate('estadisticas')" data-page="estadisticas">
             <span class="icon"><i class="bi bi-graph-up"></i></span><span>Estadísticas</span>
+        </a>
+        <a class="nav-item" onclick="navigate('asistente')" data-page="asistente">
+            <span class="icon"><i class="bi bi-stars"></i></span><span>Asistente IA</span>
         </a>
         @if($isAdmin)
         <a class="nav-item" href="/admin" style="background:#1e3a8a;color:#bfdbfe;">
@@ -1027,6 +1061,24 @@
                 </div>
             </div>
 
+            <!-- ============ ASISTENTE IA ============ -->
+            <div class="page" id="page-asistente">
+                <div id="chat-no-key" class="alert alert-warning" style="display:none;">
+                    <i class="bi bi-exclamation-triangle-fill"></i> El asistente de IA todavía no está configurado en este servidor (falta la clave de Groq). Avísale al administrador.
+                </div>
+                <div id="chat-wrap" class="section-card">
+                    <div class="section-header">
+                        <h3><i class="bi bi-stars"></i> Asistente Financiero</h3>
+                        <button class="btn btn-outline btn-sm" onclick="limpiarChat()"><i class="bi bi-trash-fill"></i> Limpiar conversación</button>
+                    </div>
+                    <div id="chat-mensajes"></div>
+                    <div id="chat-input-row">
+                        <input type="text" id="chat-input" placeholder="Ej: ¿cómo puedo pagar mis deudas más rápido con lo que gano?" autocomplete="off">
+                        <button class="btn btn-primary" id="chat-send-btn" onclick="enviarChat()"><i class="bi bi-send-fill"></i></button>
+                    </div>
+                </div>
+            </div>
+
             <!-- ============ PAGOS REALES ============ -->
             <div class="page" id="page-pagos">
                 <div class="form-section" id="form-pago">
@@ -1398,7 +1450,8 @@ const pages = {
     historial: { title: 'Historial Mensual', subtitle: 'Snapshots de tu situación financiera mes a mes' },
     metas: { title: 'Metas de Ahorro', subtitle: 'Define objetivos financieros y sigue tu progreso' },
     calculadora: { title: 'Calculadora de Préstamos', subtitle: 'Simula cuotas, intereses y amortización de cualquier préstamo' },
-    tarjetas: { title: 'Mis Tarjetas de Crédito', subtitle: 'Utilización, límites y próximas fechas de corte y pago' }
+    tarjetas: { title: 'Mis Tarjetas de Crédito', subtitle: 'Utilización, límites y próximas fechas de corte y pago' },
+    asistente: { title: 'Asistente IA', subtitle: 'Preguntale sobre tus finanzas, deudas, ahorro o mercados' }
 };
 const addBtns = {
     ingresos: `<button class="btn btn-primary" onclick="toggleForm('form-ingreso')">+ Agregar Ingreso</button>`,
@@ -1426,6 +1479,7 @@ function navigate(page) {
     if (page === 'metas') renderMetas();
     if (page === 'calculadora') calcularPrestamo();
     if (page === 'tarjetas') renderTarjetas();
+    if (page === 'asistente') initChat();
 }
 
 function openMobileMenu() {
@@ -3429,6 +3483,116 @@ async function deleteHistorial(id) {
     if (!isConfirmed) return;
     DB.set('historial_mensual', DB.get('historial_mensual').filter(h => h.id !== id));
     renderHistorial(); _toast('Historial eliminado', 'error');
+}
+
+// ============================================================
+// ASISTENTE IA (Groq)
+// ============================================================
+let _chatCargado = false;
+let _chatEnviando = false;
+
+function _csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').content;
+}
+
+async function initChat() {
+    if (_chatCargado) return;
+    const cont = document.getElementById('chat-mensajes');
+    cont.innerHTML = '<div class="chat-empty"><i class="bi bi-hourglass-split bi"></i>Cargando conversación…</div>';
+    try {
+        const res  = await fetch('/api/chat');
+        const data = await res.json();
+
+        if (!data.disponible) {
+            document.getElementById('chat-no-key').style.display = 'flex';
+            document.getElementById('chat-wrap').style.opacity = '.5';
+            document.getElementById('chat-input').disabled = true;
+            document.getElementById('chat-send-btn').disabled = true;
+        }
+
+        if (!data.mensajes || !data.mensajes.length) {
+            cont.innerHTML = `<div class="chat-empty">
+                <i class="bi bi-stars bi"></i>
+                Pregúntame sobre tu presupuesto, cómo pagar tus deudas más rápido, tus metas de ahorro, o dudas generales de finanzas e inversión.
+            </div>`;
+        } else {
+            cont.innerHTML = '';
+            data.mensajes.forEach(m => _pintarMensaje(m.role, m.texto));
+        }
+        _chatCargado = true;
+        cont.scrollTop = cont.scrollHeight;
+    } catch (e) {
+        cont.innerHTML = '<div class="chat-empty">No se pudo cargar la conversación. Intenta de nuevo.</div>';
+    }
+}
+
+function _pintarMensaje(role, texto, opts = {}) {
+    const cont = document.getElementById('chat-mensajes');
+    if (cont.querySelector('.chat-empty')) cont.innerHTML = '';
+
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}` + (opts.error ? ' error' : '');
+    if (opts.id) div.id = opts.id;
+    div.innerHTML = `
+        <div class="chat-avatar"><i class="bi ${role === 'user' ? 'bi-person-fill' : 'bi-stars'}"></i></div>
+        <div class="chat-bubble">${opts.typing ? '<div class="chat-typing"><span></span><span></span><span></span></div>' : esc(texto)}</div>
+    `;
+    cont.appendChild(div);
+    cont.scrollTop = cont.scrollHeight;
+    return div;
+}
+
+async function enviarChat() {
+    if (_chatEnviando) return;
+    const input = document.getElementById('chat-input');
+    const texto = input.value.trim();
+    if (!texto) return;
+
+    _chatEnviando = true;
+    input.value = '';
+    input.disabled = true;
+    document.getElementById('chat-send-btn').disabled = true;
+
+    _pintarMensaje('user', texto);
+    const typingEl = _pintarMensaje('assistant', '', { typing: true, id: 'chat-typing-tmp' });
+
+    try {
+        const res  = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrfToken() },
+            body: JSON.stringify({ mensaje: texto })
+        });
+        const data = await res.json();
+        typingEl.remove();
+
+        if (!res.ok) {
+            _pintarMensaje('assistant', data.error || 'Ocurrió un error, intenta de nuevo.', { error: true });
+        } else {
+            _pintarMensaje('assistant', data.respuesta);
+        }
+    } catch (e) {
+        typingEl.remove();
+        _pintarMensaje('assistant', 'No se pudo conectar con el asistente. Revisa tu conexión e intenta de nuevo.', { error: true });
+    } finally {
+        _chatEnviando = false;
+        input.disabled = false;
+        document.getElementById('chat-send-btn').disabled = false;
+        input.focus();
+    }
+}
+
+async function limpiarChat() {
+    const { isConfirmed } = await _confirm('¿Borrar toda la conversación con el asistente? Esto no se puede deshacer.');
+    if (!isConfirmed) return;
+    try {
+        await fetch('/api/chat', { method: 'DELETE', headers: { 'X-CSRF-TOKEN': _csrfToken() } });
+        _chatCargado = false;
+        document.getElementById('chat-mensajes').innerHTML = '';
+        initChat();
+        _toast('Conversación borrada');
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo borrar la conversación.' });
+    }
 }
 
 // ============================================================
