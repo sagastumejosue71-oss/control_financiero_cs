@@ -306,6 +306,34 @@ Route::post('/api/chat',      [\App\Http\Controllers\ChatController::class, 'sen
 Route::delete('/api/chat',    [\App\Http\Controllers\ChatController::class, 'clear']);
 
 // =====================================================================
+// NEGOCIOS (control financiero por negocio — separa el dinero de cada uno)
+// =====================================================================
+Route::prefix('api/negocios')->group(function () {
+    Route::get('/',    [\App\Http\Controllers\NegocioController::class, 'index']);
+    Route::post('/',   [\App\Http\Controllers\NegocioController::class, 'store']);
+    Route::get('/{negocio}',    [\App\Http\Controllers\NegocioController::class, 'show']);
+    Route::put('/{negocio}',    [\App\Http\Controllers\NegocioController::class, 'update']);
+    Route::delete('/{negocio}', [\App\Http\Controllers\NegocioController::class, 'destroy']);
+
+    Route::get('/{negocio}/cuentas',             [\App\Http\Controllers\CuentaController::class, 'index']);
+    Route::post('/{negocio}/cuentas',            [\App\Http\Controllers\CuentaController::class, 'store']);
+    Route::put('/{negocio}/cuentas/{cuenta}',    [\App\Http\Controllers\CuentaController::class, 'update']);
+    Route::delete('/{negocio}/cuentas/{cuenta}', [\App\Http\Controllers\CuentaController::class, 'destroy']);
+
+    Route::get('/{negocio}/categorias',                [\App\Http\Controllers\CategoriaController::class, 'index']);
+    Route::post('/{negocio}/categorias',               [\App\Http\Controllers\CategoriaController::class, 'store']);
+    Route::delete('/{negocio}/categorias/{categoria}', [\App\Http\Controllers\CategoriaController::class, 'destroy']);
+
+    Route::get('/{negocio}/movimientos',                 [\App\Http\Controllers\MovimientoController::class, 'index']);
+    Route::post('/{negocio}/movimientos',                [\App\Http\Controllers\MovimientoController::class, 'store']);
+    Route::delete('/{negocio}/movimientos/{movimiento}', [\App\Http\Controllers\MovimientoController::class, 'destroy']);
+
+    Route::get('/{negocio}/deudas',         [\App\Http\Controllers\DeudaController::class, 'index']);
+    Route::post('/{negocio}/deudas',        [\App\Http\Controllers\DeudaController::class, 'store']);
+    Route::put('/{negocio}/deudas/{deuda}', [\App\Http\Controllers\DeudaController::class, 'update']);
+});
+
+// =====================================================================
 // PANEL DE ADMINISTRACIÓN (interfaz separada)
 // =====================================================================
 Route::middleware(['admin'])->group(function () {
