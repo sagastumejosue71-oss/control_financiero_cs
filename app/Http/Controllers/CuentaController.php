@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\VerificaPropietarioNegocio;
 use App\Models\Cuenta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class CuentaController extends Controller
 {
@@ -28,9 +29,14 @@ class CuentaController extends Controller
         $n = $this->negocioDelUsuario($negocio);
 
         $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
+            'nombre' => [
+                'required', 'string', 'max:255',
+                Rule::unique('cuentas')->where(fn ($q) => $q->where('negocio_id', $n->id)),
+            ],
             'tipo' => 'required|in:efectivo,banco,tarjeta,otro',
             'saldo_inicial' => 'sometimes|numeric',
+        ], [
+            'nombre.unique' => 'Ya existe una cuenta con ese nombre en este negocio.',
         ]);
 
         $cuenta = $n->cuentas()->create($validated);
@@ -49,10 +55,15 @@ class CuentaController extends Controller
         $c = $n->cuentas()->findOrFail($cuenta);
 
         $validated = $request->validate([
-            'nombre' => 'sometimes|string|max:255',
+            'nombre' => [
+                'sometimes', 'string', 'max:255',
+                Rule::unique('cuentas')->where(fn ($q) => $q->where('negocio_id', $n->id))->ignore($c->id),
+            ],
             'tipo' => 'sometimes|in:efectivo,banco,tarjeta,otro',
             'saldo_inicial' => 'sometimes|numeric',
             'activa' => 'sometimes|boolean',
+        ], [
+            'nombre.unique' => 'Ya existe una cuenta con ese nombre en este negocio.',
         ]);
 
         $c->update($validated);

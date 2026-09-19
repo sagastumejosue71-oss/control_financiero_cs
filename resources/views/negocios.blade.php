@@ -79,11 +79,13 @@
         <div class="selector-row">
             <select id="selNegocio" onchange="seleccionarNegocio(this.value)"></select>
             <button class="secondary" onclick="mostrarFormNegocio()"><i class="bi bi-plus-lg"></i> Nuevo negocio</button>
+            <button class="secondary" onclick="editarNegocioActual()"><i class="bi bi-pencil"></i> Editar</button>
+            <button class="danger" onclick="eliminarNegocioActual()"><i class="bi bi-trash"></i> Eliminar</button>
         </div>
         <div id="formNegocio" class="form-inline oculto" style="margin-top:12px;">
             <input id="negNombre" placeholder="Nombre del negocio">
             <input id="negMoneda" placeholder="Moneda (ej. GTQ)" maxlength="3" style="max-width:110px;">
-            <button onclick="crearNegocio()">Guardar</button>
+            <button onclick="guardarNegocio()">Guardar</button>
             <button class="secondary" onclick="ocultarFormNegocio()">Cancelar</button>
         </div>
         <div id="sinNegocios" class="empty-state oculto">Todavía no tienes ningún negocio registrado. Crea el primero arriba.</div>
@@ -203,7 +205,12 @@ async function _api(url, method = 'GET', body = null) {
     try { json = await res.json(); } catch (e) { /* respuesta vacía */ }
 
     if (!res.ok) {
-        const msg = (json && (json.message || json.error)) || 'Ocurrió un error inesperado.';
+        let msg = 'Ocurrió un error inesperado.';
+        if (json) {
+            const primerError = json.errors ? Object.values(json.errors)[0] : null;
+            if (Array.isArray(primerError) && primerError.length) msg = primerError[0];
+            else if (json.message || json.error) msg = json.message || json.error;
+        }
         _toast(msg, 'error');
         throw new Error(msg);
     }
@@ -212,48 +219,84 @@ async function _api(url, method = 'GET', body = null) {
 
 let negocioActual = null;
 let categoriasCache = [];
+let negociosCache = [];
+let negEditId = null;
 
 // ── Negocios ─────────────────────────────────────────────────────────────
 async function cargarNegocios(seleccionarId = null) {
-    const negocios = await _api('/api/negocios');
+    negociosCache = await _api('/api/negocios');
     const sel = document.getElementById('selNegocio');
     sel.innerHTML = '';
 
-    if (!negocios.length) {
+    if (!negociosCache.length) {
         document.getElementById('sinNegocios').classList.remove('oculto');
         document.getElementById('panelesNegocio').classList.add('oculto');
+        document.getElementById('cardResumen').classList.add('oculto');
         return;
     }
     document.getElementById('sinNegocios').classList.add('oculto');
 
-    negocios.forEach(n => {
+    negociosCache.forEach(n => {
         const opt = document.createElement('option');
         opt.value = n.id;
         opt.textContent = `${n.nombre} (${n.moneda})`;
         sel.appendChild(opt);
     });
 
-    const idAUsar = seleccionarId || negocioActual || negocios[0].id;
+    const idAUsar = seleccionarId || negocioActual || negociosCache[0].id;
     sel.value = idAUsar;
     await seleccionarNegocio(idAUsar);
 }
 
-function mostrarFormNegocio() { document.getElementById('formNegocio').classList.remove('oculto'); }
+function mostrarFormNegocio() {
+    negEditId = null;
+    document.getElementById('negNombre').value = '';
+    document.getElementById('negMoneda').value = '';
+    document.getElementById('formNegocio').classList.remove('oculto');
+}
 function ocultarFormNegocio() {
     document.getElementById('formNegocio').classList.add('oculto');
     document.getElementById('negNombre').value = '';
     document.getElementById('negMoneda').value = '';
+    negEditId = null;
 }
 
-async function crearNegocio() {
+function editarNegocioActual() {
+    const n = negociosCache.find(x => x.id == negocioActual);
+    if (!n) { _toast('Selecciona un negocio primero', 'warning'); return; }
+    negEditId = n.id;
+    document.getElementById('negNombre').value = n.nombre;
+    document.getElementById('negMoneda').value = n.moneda;
+    document.getElementById('formNegocio').classList.remove('oculto');
+}
+
+async function guardarNegocio() {
     const nombre = document.getElementById('negNombre').value.trim();
     const moneda = document.getElementById('negMoneda').value.trim().toUpperCase() || 'GTQ';
     if (!nombre) { _toast('Ponle un nombre al negocio', 'warning'); return; }
 
-    const data = await _api('/api/negocios', 'POST', { nombre, moneda });
-    ocultarFormNegocio();
-    _toast('Negocio creado');
-    await cargarNegocios(data.negocio.id);
+    if (negEditId) {
+        await _api(`/api/negocios/${negEditId}`, 'PUT', { nombre, moneda });
+        ocultarFormNegocio();
+        _toast('Negocio actualizado');
+        await cargarNegocios(negEditId);
+    } else {
+        const data = await _api('/api/negocios', 'POST', { nombre, moneda });
+        ocultarFormNegocio();
+        _toast('Negocio creado');
+        await cargarNegocios(data.negocio.id);
+    }
+}
+
+async function eliminarNegocioActual() {
+    if (!negocioActual) { _toast('Selecciona un negocio primero', 'warning'); return; }
+    const r = await _confirm('Se eliminará el negocio y TODAS sus cuentas, categorías, movimientos y deudas.');
+    if (!r.isConfirmed) return;
+
+    await _api(`/api/negocios/${negocioActual}`, 'DELETE');
+    _toast('Negocio eliminado');
+    negocioActual = null;
+    await cargarNegocios();
 }
 
 async function seleccionarNegocio(id) {

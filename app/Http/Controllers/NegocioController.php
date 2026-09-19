@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\VerificaPropietarioNegocio;
 use App\Models\Negocio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class NegocioController extends Controller
 {
@@ -27,8 +28,13 @@ class NegocioController extends Controller
         abort_unless(session('user_id'), 401, 'No autenticado');
 
         $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
+            'nombre' => [
+                'required', 'string', 'max:255',
+                Rule::unique('negocios')->where(fn ($q) => $q->where('user_id', session('user_id'))),
+            ],
             'moneda' => 'sometimes|string|size:3',
+        ], [
+            'nombre.unique' => 'Ya tienes un negocio con ese nombre.',
         ]);
 
         $negocio = Negocio::create([
@@ -54,9 +60,14 @@ class NegocioController extends Controller
         $n = $this->negocioDelUsuario($negocio);
 
         $validated = $request->validate([
-            'nombre' => 'sometimes|string|max:255',
+            'nombre' => [
+                'sometimes', 'string', 'max:255',
+                Rule::unique('negocios')->where(fn ($q) => $q->where('user_id', session('user_id')))->ignore($n->id),
+            ],
             'moneda' => 'sometimes|string|size:3',
             'activo' => 'sometimes|boolean',
+        ], [
+            'nombre.unique' => 'Ya tienes un negocio con ese nombre.',
         ]);
 
         $antes = $n->only(['nombre', 'moneda', 'activo']);

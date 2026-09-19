@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\VerificaPropietarioNegocio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class CategoriaController extends Controller
 {
@@ -24,8 +25,13 @@ class CategoriaController extends Controller
         $n = $this->negocioDelUsuario($negocio);
 
         $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
+            'nombre' => [
+                'required', 'string', 'max:255',
+                Rule::unique('categorias')->where(fn ($q) => $q->where('negocio_id', $n->id)->where('tipo', $request->input('tipo'))),
+            ],
             'tipo' => 'required|in:ingreso,gasto',
+        ], [
+            'nombre.unique' => 'Ya existe una categoría con ese nombre y tipo en este negocio.',
         ]);
 
         $categoria = $n->categorias()->create($validated);
