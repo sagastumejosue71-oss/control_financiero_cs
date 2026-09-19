@@ -56,6 +56,12 @@
         .tag.gasto { background: #fee2e2; color: #991b1b; }
 
         .empty-state { color: #64748b; font-size: 13px; padding: 10px 0; }
+        .resumen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .resumen-tile { text-align: center; }
+        .resumen-tile .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+        .resumen-tile .valor { font-size: 20px; font-weight: 700; margin-top: 4px; }
+        .resumen-tile .valor.neg { color: #dc2626; }
+        .resumen-tile .valor.pos { color: #16a34a; }
         .oculto { display: none; }
     </style>
 </head>
@@ -81,6 +87,16 @@
             <button class="secondary" onclick="ocultarFormNegocio()">Cancelar</button>
         </div>
         <div id="sinNegocios" class="empty-state oculto">Todavía no tienes ningún negocio registrado. Crea el primero arriba.</div>
+    </div>
+
+    <div id="cardResumen" class="card oculto">
+        <h2><i class="bi bi-graph-up"></i> Resumen del negocio</h2>
+        <div class="resumen-grid">
+            <div class="resumen-tile"><div class="label">Saldo total</div><div class="valor" id="rSaldoTotal">—</div></div>
+            <div class="resumen-tile"><div class="label">Ingresos (mes)</div><div class="valor pos" id="rIngresosMes">—</div></div>
+            <div class="resumen-tile"><div class="label">Gastos (mes)</div><div class="valor neg" id="rGastosMes">—</div></div>
+            <div class="resumen-tile"><div class="label">Neto (mes)</div><div class="valor" id="rNetoMes">—</div></div>
+        </div>
     </div>
 
     <div id="panelesNegocio" class="oculto">
@@ -235,8 +251,19 @@ async function crearNegocio() {
 async function seleccionarNegocio(id) {
     negocioActual = id;
     document.getElementById('panelesNegocio').classList.remove('oculto');
-    await Promise.all([cargarCuentas(), cargarCategorias(), cargarDeudas()]);
+    document.getElementById('cardResumen').classList.remove('oculto');
+    await Promise.all([cargarCuentas(), cargarCategorias(), cargarDeudas(), cargarResumen()]);
     await cargarMovimientos();
+}
+
+async function cargarResumen() {
+    const r = await _api(`/api/negocios/${negocioActual}/resumen`);
+    document.getElementById('rSaldoTotal').textContent = `Q ${r.saldo_total.toFixed(2)}`;
+    document.getElementById('rIngresosMes').textContent = `Q ${r.ingresos_mes.toFixed(2)}`;
+    document.getElementById('rGastosMes').textContent = `Q ${r.gastos_mes.toFixed(2)}`;
+    const netoEl = document.getElementById('rNetoMes');
+    netoEl.textContent = `Q ${r.neto_mes.toFixed(2)}`;
+    netoEl.className = 'valor ' + (r.neto_mes < 0 ? 'neg' : 'pos');
 }
 
 // ── Cuentas ──────────────────────────────────────────────────────────────
@@ -279,6 +306,7 @@ async function crearCuenta() {
     document.getElementById('cuentaSaldoInicial').value = '';
     _toast('Cuenta creada');
     await cargarCuentas();
+    await cargarResumen();
 }
 
 async function eliminarCuenta(id) {
@@ -288,6 +316,7 @@ async function eliminarCuenta(id) {
     _toast('Cuenta eliminada');
     await cargarCuentas();
     await cargarMovimientos();
+    await cargarResumen();
 }
 
 // ── Categorías ───────────────────────────────────────────────────────────
@@ -382,6 +411,7 @@ async function crearMovimiento() {
     _toast('Movimiento registrado');
     await cargarMovimientos();
     await cargarCuentas();
+    await cargarResumen();
 }
 
 async function eliminarMovimiento(id) {
@@ -391,6 +421,7 @@ async function eliminarMovimiento(id) {
     _toast('Movimiento eliminado');
     await cargarMovimientos();
     await cargarCuentas();
+    await cargarResumen();
 }
 
 // ── Deudas ───────────────────────────────────────────────────────────────

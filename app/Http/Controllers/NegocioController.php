@@ -85,6 +85,39 @@ class NegocioController extends Controller
         return response()->json(['message' => '✅ Negocio eliminado']);
     }
 
+    public function resumen(int $negocio)
+    {
+        $n = $this->negocioDelUsuario($negocio);
+
+        $saldoTotal = $n->cuentas()->get()->sum(fn ($c) => $c->saldoActual());
+
+        $ingresosTotales = (float) $n->movimientos()->where('tipo', 'ingreso')->sum('monto');
+        $gastosTotales   = (float) $n->movimientos()->where('tipo', 'gasto')->sum('monto');
+
+        $inicioMes = now()->startOfMonth()->toDateString();
+        $finMes    = now()->endOfMonth()->toDateString();
+
+        $ingresosMes = (float) $n->movimientos()
+            ->where('tipo', 'ingreso')
+            ->whereBetween('fecha', [$inicioMes, $finMes])
+            ->sum('monto');
+
+        $gastosMes = (float) $n->movimientos()
+            ->where('tipo', 'gasto')
+            ->whereBetween('fecha', [$inicioMes, $finMes])
+            ->sum('monto');
+
+        return response()->json([
+            'saldo_total'      => round($saldoTotal, 2),
+            'ingresos_totales' => round($ingresosTotales, 2),
+            'gastos_totales'   => round($gastosTotales, 2),
+            'neto_total'       => round($ingresosTotales - $gastosTotales, 2),
+            'ingresos_mes'     => round($ingresosMes, 2),
+            'gastos_mes'       => round($gastosMes, 2),
+            'neto_mes'         => round($ingresosMes - $gastosMes, 2),
+        ]);
+    }
+
     private function auditar(Request $request, string $accion, array $detalle): void
     {
         Log::channel('auditoria')->info($accion, array_merge([

@@ -318,6 +318,7 @@ Route::prefix('api/negocios')->group(function () {
     Route::get('/',    [\App\Http\Controllers\NegocioController::class, 'index']);
     Route::post('/',   [\App\Http\Controllers\NegocioController::class, 'store']);
     Route::get('/{negocio}',    [\App\Http\Controllers\NegocioController::class, 'show']);
+    Route::get('/{negocio}/resumen', [\App\Http\Controllers\NegocioController::class, 'resumen']);
     Route::put('/{negocio}',    [\App\Http\Controllers\NegocioController::class, 'update']);
     Route::delete('/{negocio}', [\App\Http\Controllers\NegocioController::class, 'destroy']);
 
