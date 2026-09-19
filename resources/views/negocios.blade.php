@@ -97,6 +97,13 @@
             <div class="resumen-tile"><div class="label">Gastos (mes)</div><div class="valor neg" id="rGastosMes">—</div></div>
             <div class="resumen-tile"><div class="label">Neto (mes)</div><div class="valor" id="rNetoMes">—</div></div>
         </div>
+        <div style="margin-top:16px;">
+            <canvas id="graficaMensual" height="90"></canvas>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;">
+            <a id="btnExportarPdf" class="secondary" style="text-decoration:none;padding:8px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;" href="#" target="_blank"><i class="bi bi-file-earmark-pdf"></i> Exportar PDF</a>
+            <a id="btnExportarWord" class="secondary" style="text-decoration:none;padding:8px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;" href="#" target="_blank"><i class="bi bi-file-earmark-word"></i> Exportar Word</a>
+        </div>
     </div>
 
     <div id="panelesNegocio" class="oculto">
@@ -172,6 +179,7 @@
     </div>
 </div>
 
+<script src="/vendor/chartjs/chart.umd.js"></script>
 <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
 <script>
 function _csrf() { return document.querySelector('meta[name="csrf-token"]').content; }
@@ -264,6 +272,34 @@ async function cargarResumen() {
     const netoEl = document.getElementById('rNetoMes');
     netoEl.textContent = `Q ${r.neto_mes.toFixed(2)}`;
     netoEl.className = 'valor ' + (r.neto_mes < 0 ? 'neg' : 'pos');
+
+    document.getElementById('btnExportarPdf').href = `/api/negocios/${negocioActual}/exportar-pdf`;
+    document.getElementById('btnExportarWord').href = `/api/negocios/${negocioActual}/exportar-word`;
+
+    await cargarGraficaMensual();
+}
+
+let _chartMensual = null;
+async function cargarGraficaMensual() {
+    const meses = await _api(`/api/negocios/${negocioActual}/estadisticas-mensuales`);
+    const ctx = document.getElementById('graficaMensual');
+
+    if (_chartMensual) _chartMensual.destroy();
+    _chartMensual = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: meses.map(m => m.mes),
+            datasets: [
+                { label: 'Ingresos', data: meses.map(m => m.ingresos), backgroundColor: '#16a34a' },
+                { label: 'Gastos',   data: meses.map(m => m.gastos),   backgroundColor: '#dc2626' },
+            ],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: true } },
+        },
+    });
 }
 
 // ── Cuentas ──────────────────────────────────────────────────────────────

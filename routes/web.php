@@ -319,6 +319,9 @@ Route::prefix('api/negocios')->group(function () {
     Route::post('/',   [\App\Http\Controllers\NegocioController::class, 'store']);
     Route::get('/{negocio}',    [\App\Http\Controllers\NegocioController::class, 'show']);
     Route::get('/{negocio}/resumen', [\App\Http\Controllers\NegocioController::class, 'resumen']);
+    Route::get('/{negocio}/estadisticas-mensuales', [\App\Http\Controllers\NegocioController::class, 'estadisticasMensuales']);
+    Route::get('/{negocio}/exportar-pdf',  [\App\Http\Controllers\NegocioResumenController::class, 'exportarPdf']);
+    Route::get('/{negocio}/exportar-word', [\App\Http\Controllers\NegocioResumenController::class, 'exportarWord']);
     Route::put('/{negocio}',    [\App\Http\Controllers\NegocioController::class, 'update']);
     Route::delete('/{negocio}', [\App\Http\Controllers\NegocioController::class, 'destroy']);
 

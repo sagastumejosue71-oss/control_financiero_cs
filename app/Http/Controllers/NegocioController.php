@@ -118,6 +118,34 @@ class NegocioController extends Controller
         ]);
     }
 
+    public function estadisticasMensuales(int $negocio)
+    {
+        $n = $this->negocioDelUsuario($negocio);
+
+        $meses = collect(range(5, 0))->map(function ($i) use ($n) {
+            $inicio = now()->subMonths($i)->startOfMonth();
+            $fin = now()->subMonths($i)->endOfMonth();
+
+            $ingresos = (float) $n->movimientos()
+                ->where('tipo', 'ingreso')
+                ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
+                ->sum('monto');
+
+            $gastos = (float) $n->movimientos()
+                ->where('tipo', 'gasto')
+                ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
+                ->sum('monto');
+
+            return [
+                'mes' => $inicio->format('m/Y'),
+                'ingresos' => round($ingresos, 2),
+                'gastos' => round($gastos, 2),
+            ];
+        });
+
+        return response()->json($meses);
+    }
+
     private function auditar(Request $request, string $accion, array $detalle): void
     {
         Log::channel('auditoria')->info($accion, array_merge([
