@@ -308,6 +308,12 @@ Route::delete('/api/chat',    [\App\Http\Controllers\ChatController::class, 'cle
 // =====================================================================
 // NEGOCIOS (control financiero por negocio — separa el dinero de cada uno)
 // =====================================================================
+Route::get('/negocios', function () {
+    if (!session('user_id')) return redirect('/login');
+    $user = \App\Models\User::find(session('user_id'), ['*']);
+    return view('negocios', ['currentUser' => $user]);
+});
+
 Route::prefix('api/negocios')->group(function () {
     Route::get('/',    [\App\Http\Controllers\NegocioController::class, 'index']);
     Route::post('/',   [\App\Http\Controllers\NegocioController::class, 'store']);

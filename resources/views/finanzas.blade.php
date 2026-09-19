@@ -337,6 +337,9 @@
             <span class="icon"><i class="bi bi-gear-fill"></i></span><span>Panel de Admin</span>
         </a>
         @endif
+        <a class="nav-item" href="/negocios" style="background:#065f46;color:#bbf7d0;">
+            <span class="icon"><i class="bi bi-briefcase"></i></span><span>Mis Negocios</span>
+        </a>
         <div class="nav-section">Seguimiento</div>
         <a class="nav-item" onclick="navigate('pagos')" data-page="pagos">
             <span class="icon"><i class="bi bi-cash-stack"></i></span><span>Pagos Reales</span>
