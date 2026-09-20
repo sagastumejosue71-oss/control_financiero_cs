@@ -48,7 +48,12 @@ class DeudaController extends Controller
         $d = $n->deudas()->findOrFail($deuda);
 
         $validated = $request->validate([
+            'acreedor' => 'sometimes|string|max:255',
+            'monto_total' => 'sometimes|numeric|min:0',
             'saldo_pendiente' => 'sometimes|numeric|min:0',
+            'tasa_interes' => 'sometimes|nullable|numeric|min:0|max:100',
+            'fecha_inicio' => 'sometimes|nullable|date',
+            'fecha_limite' => 'sometimes|nullable|date',
             'saldada' => 'sometimes|boolean',
         ]);
 
@@ -60,6 +65,21 @@ class DeudaController extends Controller
         ]);
 
         return response()->json(['message' => '✅ Deuda actualizada', 'deuda' => $d]);
+    }
+
+    public function destroy(Request $request, int $negocio, int $deuda)
+    {
+        $n = $this->negocioDelUsuario($negocio);
+        $d = $n->deudas()->findOrFail($deuda);
+
+        $this->auditar($request, 'DEUDA_ELIMINADA', [
+            'negocio_id' => $n->id,
+            'deuda_id' => $d->id,
+        ]);
+
+        $d->delete();
+
+        return response()->json(['message' => '✅ Deuda eliminada']);
     }
 
     private function auditar(Request $request, string $accion, array $detalle): void

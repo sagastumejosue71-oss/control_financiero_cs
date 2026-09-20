@@ -135,7 +135,8 @@
                     <option value="ingreso">Ingreso</option>
                     <option value="gasto">Gasto</option>
                 </select>
-                <button onclick="crearCategoria()">Agregar categoría</button>
+                <button id="btnCategoria" onclick="crearCategoria()">Agregar categoría</button>
+                <button id="btnCancelarCategoria" class="secondary oculto" onclick="cancelarEdicionCategoria()">Cancelar</button>
             </div>
             <div id="listaCategorias"></div>
             <div id="sinCategorias" class="empty-state oculto">No hay categorías todavía.</div>
@@ -153,7 +154,8 @@
                 <input id="movMonto" type="number" step="0.01" placeholder="Monto" style="max-width:110px;">
                 <input id="movFecha" type="date">
                 <input id="movDescripcion" placeholder="Descripción (opcional)">
-                <button onclick="crearMovimiento()">Registrar</button>
+                <button id="btnMovimiento" onclick="crearMovimiento()">Registrar</button>
+                <button id="btnCancelarMovimiento" class="secondary oculto" onclick="cancelarEdicionMovimiento()">Cancelar</button>
             </div>
             <table>
                 <thead><tr><th>Fecha</th><th>Cuenta</th><th>Categoría</th><th>Tipo</th><th>Monto</th><th>Descripción</th><th></th></tr></thead>
@@ -169,7 +171,8 @@
                 <input id="deudaMontoTotal" type="number" step="0.01" placeholder="Monto total" style="max-width:120px;">
                 <input id="deudaSaldoPendiente" type="number" step="0.01" placeholder="Saldo pendiente" style="max-width:130px;">
                 <input id="deudaFechaLimite" type="date" title="Fecha límite (opcional)">
-                <button onclick="crearDeuda()">Agregar deuda</button>
+                <button id="btnDeuda" onclick="crearDeuda()">Agregar deuda</button>
+                <button id="btnCancelarDeuda" class="secondary oculto" onclick="cancelarEdicionDeuda()">Cancelar</button>
             </div>
             <table>
                 <thead><tr><th>Acreedor</th><th>Total</th><th>Pendiente</th><th>Límite</th><th>Estado</th><th></th></tr></thead>
@@ -221,6 +224,11 @@ let negocioActual = null;
 let categoriasCache = [];
 let negociosCache = [];
 let negEditId = null;
+let catEditId = null;
+let movimientosCache = [];
+let movEditId = null;
+let deudasCache = [];
+let deudaEditId = null;
 
 // ── Negocios ─────────────────────────────────────────────────────────────
 async function cargarNegocios(seleccionarId = null) {
@@ -411,6 +419,7 @@ async function cargarCategorias() {
         row.innerHTML = `
             <span class="tag ${cat.tipo}">${cat.tipo}</span>
             <span style="flex:1;">${cat.nombre}</span>
+            <button class="secondary" onclick="editarCategoria(${cat.id})"><i class="bi bi-pencil"></i></button>
             <button class="danger" onclick="eliminarCategoria(${cat.id})"><i class="bi bi-trash"></i></button>
         `;
         cont.appendChild(row);
@@ -431,14 +440,38 @@ function filtrarCategoriasPorTipo() {
     });
 }
 
+function editarCategoria(id) {
+    const cat = categoriasCache.find(c => c.id === id);
+    if (!cat) return;
+    catEditId = id;
+    document.getElementById('catNombre').value = cat.nombre;
+    document.getElementById('catTipo').value = cat.tipo;
+    document.getElementById('btnCategoria').textContent = 'Guardar cambios';
+    document.getElementById('btnCancelarCategoria').classList.remove('oculto');
+}
+
+function cancelarEdicionCategoria() {
+    catEditId = null;
+    document.getElementById('catNombre').value = '';
+    document.getElementById('catTipo').value = 'ingreso';
+    document.getElementById('btnCategoria').textContent = 'Agregar categoría';
+    document.getElementById('btnCancelarCategoria').classList.add('oculto');
+}
+
 async function crearCategoria() {
     const nombre = document.getElementById('catNombre').value.trim();
     const tipo = document.getElementById('catTipo').value;
     if (!nombre) { _toast('Ponle un nombre a la categoría', 'warning'); return; }
 
-    await _api(`/api/negocios/${negocioActual}/categorias`, 'POST', { nombre, tipo });
-    document.getElementById('catNombre').value = '';
-    _toast('Categoría creada');
+    if (catEditId) {
+        await _api(`/api/negocios/${negocioActual}/categorias/${catEditId}`, 'PUT', { nombre, tipo });
+        _toast('Categoría actualizada');
+        cancelarEdicionCategoria();
+    } else {
+        await _api(`/api/negocios/${negocioActual}/categorias`, 'POST', { nombre, tipo });
+        document.getElementById('catNombre').value = '';
+        _toast('Categoría creada');
+    }
     await cargarCategorias();
 }
 
@@ -454,6 +487,7 @@ async function eliminarCategoria(id) {
 async function cargarMovimientos() {
     const json = await _api(`/api/negocios/${negocioActual}/movimientos`);
     const movimientos = json.data || [];
+    movimientosCache = movimientos;
     const tbody = document.getElementById('listaMovimientos');
     tbody.innerHTML = '';
     document.getElementById('sinMovimientos').classList.toggle('oculto', movimientos.length > 0);
@@ -467,10 +501,36 @@ async function cargarMovimientos() {
             <td><span class="tag ${m.tipo}">${m.tipo}</span></td>
             <td>Q ${Number(m.monto).toFixed(2)}</td>
             <td>${m.descripcion || ''}</td>
-            <td><button class="danger" onclick="eliminarMovimiento(${m.id})"><i class="bi bi-trash"></i></button></td>
+            <td style="white-space:nowrap;">
+                <button class="secondary" onclick="editarMovimiento(${m.id})"><i class="bi bi-pencil"></i></button>
+                <button class="danger" onclick="eliminarMovimiento(${m.id})"><i class="bi bi-trash"></i></button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function editarMovimiento(id) {
+    const m = movimientosCache.find(x => x.id === id);
+    if (!m) return;
+    movEditId = id;
+    document.getElementById('movTipo').value = m.tipo;
+    filtrarCategoriasPorTipo();
+    document.getElementById('movCuenta').value = m.cuenta_id;
+    document.getElementById('movCategoria').value = m.categoria_id || '';
+    document.getElementById('movMonto').value = m.monto;
+    document.getElementById('movFecha').value = m.fecha;
+    document.getElementById('movDescripcion').value = m.descripcion || '';
+    document.getElementById('btnMovimiento').textContent = 'Guardar cambios';
+    document.getElementById('btnCancelarMovimiento').classList.remove('oculto');
+}
+
+function cancelarEdicionMovimiento() {
+    movEditId = null;
+    document.getElementById('movMonto').value = '';
+    document.getElementById('movDescripcion').value = '';
+    document.getElementById('btnMovimiento').textContent = 'Registrar';
+    document.getElementById('btnCancelarMovimiento').classList.add('oculto');
 }
 
 async function crearMovimiento() {
@@ -484,10 +544,16 @@ async function crearMovimiento() {
     if (!cuenta_id) { _toast('Primero crea una cuenta', 'warning'); return; }
     if (!monto || monto <= 0) { _toast('Ingresa un monto válido', 'warning'); return; }
 
-    await _api(`/api/negocios/${negocioActual}/movimientos`, 'POST', { cuenta_id, categoria_id, tipo, monto, fecha, descripcion });
-    document.getElementById('movMonto').value = '';
-    document.getElementById('movDescripcion').value = '';
-    _toast('Movimiento registrado');
+    if (movEditId) {
+        await _api(`/api/negocios/${negocioActual}/movimientos/${movEditId}`, 'PUT', { cuenta_id, categoria_id, tipo, monto, fecha, descripcion });
+        _toast('Movimiento actualizado');
+        cancelarEdicionMovimiento();
+    } else {
+        await _api(`/api/negocios/${negocioActual}/movimientos`, 'POST', { cuenta_id, categoria_id, tipo, monto, fecha, descripcion });
+        document.getElementById('movMonto').value = '';
+        document.getElementById('movDescripcion').value = '';
+        _toast('Movimiento registrado');
+    }
     await cargarMovimientos();
     await cargarCuentas();
     await cargarResumen();
@@ -506,6 +572,7 @@ async function eliminarMovimiento(id) {
 // ── Deudas ───────────────────────────────────────────────────────────────
 async function cargarDeudas() {
     const deudas = await _api(`/api/negocios/${negocioActual}/deudas`);
+    deudasCache = deudas;
     const tbody = document.getElementById('listaDeudas');
     tbody.innerHTML = '';
     document.getElementById('sinDeudas').classList.toggle('oculto', deudas.length > 0);
@@ -518,10 +585,36 @@ async function cargarDeudas() {
             <td>Q ${Number(d.saldo_pendiente).toFixed(2)}</td>
             <td>${d.fecha_limite || '—'}</td>
             <td>${d.saldada ? '<span class="tag ingreso">Saldada</span>' : '<span class="tag gasto">Pendiente</span>'}</td>
-            <td>${d.saldada ? '' : `<button class="secondary" onclick="marcarDeudaSaldada(${d.id})">Marcar pagada</button>`}</td>
+            <td style="white-space:nowrap;">
+                ${d.saldada ? '' : `<button class="secondary" onclick="marcarDeudaSaldada(${d.id})">Marcar pagada</button>`}
+                <button class="secondary" onclick="editarDeuda(${d.id})"><i class="bi bi-pencil"></i></button>
+                <button class="danger" onclick="eliminarDeuda(${d.id})"><i class="bi bi-trash"></i></button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function editarDeuda(id) {
+    const d = deudasCache.find(x => x.id === id);
+    if (!d) return;
+    deudaEditId = id;
+    document.getElementById('deudaAcreedor').value = d.acreedor;
+    document.getElementById('deudaMontoTotal').value = d.monto_total;
+    document.getElementById('deudaSaldoPendiente').value = d.saldo_pendiente;
+    document.getElementById('deudaFechaLimite').value = d.fecha_limite || '';
+    document.getElementById('btnDeuda').textContent = 'Guardar cambios';
+    document.getElementById('btnCancelarDeuda').classList.remove('oculto');
+}
+
+function cancelarEdicionDeuda() {
+    deudaEditId = null;
+    document.getElementById('deudaAcreedor').value = '';
+    document.getElementById('deudaMontoTotal').value = '';
+    document.getElementById('deudaSaldoPendiente').value = '';
+    document.getElementById('deudaFechaLimite').value = '';
+    document.getElementById('btnDeuda').textContent = 'Agregar deuda';
+    document.getElementById('btnCancelarDeuda').classList.add('oculto');
 }
 
 async function crearDeuda() {
@@ -533,17 +626,31 @@ async function crearDeuda() {
     if (!acreedor) { _toast('Ponle un nombre al acreedor', 'warning'); return; }
     if (!monto_total || !saldo_pendiente) { _toast('Ingresa monto total y saldo pendiente', 'warning'); return; }
 
-    await _api(`/api/negocios/${negocioActual}/deudas`, 'POST', { acreedor, monto_total, saldo_pendiente, fecha_limite });
-    document.getElementById('deudaAcreedor').value = '';
-    document.getElementById('deudaMontoTotal').value = '';
-    document.getElementById('deudaSaldoPendiente').value = '';
-    _toast('Deuda registrada');
+    if (deudaEditId) {
+        await _api(`/api/negocios/${negocioActual}/deudas/${deudaEditId}`, 'PUT', { acreedor, monto_total, saldo_pendiente, fecha_limite });
+        _toast('Deuda actualizada');
+        cancelarEdicionDeuda();
+    } else {
+        await _api(`/api/negocios/${negocioActual}/deudas`, 'POST', { acreedor, monto_total, saldo_pendiente, fecha_limite });
+        document.getElementById('deudaAcreedor').value = '';
+        document.getElementById('deudaMontoTotal').value = '';
+        document.getElementById('deudaSaldoPendiente').value = '';
+        _toast('Deuda registrada');
+    }
     await cargarDeudas();
 }
 
 async function marcarDeudaSaldada(id) {
     await _api(`/api/negocios/${negocioActual}/deudas/${id}`, 'PUT', { saldada: true, saldo_pendiente: 0 });
     _toast('Deuda marcada como pagada');
+    await cargarDeudas();
+}
+
+async function eliminarDeuda(id) {
+    const r = await _confirm('Se eliminará esta deuda.');
+    if (!r.isConfirmed) return;
+    await _api(`/api/negocios/${negocioActual}/deudas/${id}`, 'DELETE');
+    _toast('Deuda eliminada');
     await cargarDeudas();
 }
 

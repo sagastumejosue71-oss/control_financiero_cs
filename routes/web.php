@@ -332,15 +332,18 @@ Route::prefix('api/negocios')->group(function () {
 
     Route::get('/{negocio}/categorias',                [\App\Http\Controllers\CategoriaController::class, 'index']);
     Route::post('/{negocio}/categorias',               [\App\Http\Controllers\CategoriaController::class, 'store']);
+    Route::put('/{negocio}/categorias/{categoria}',    [\App\Http\Controllers\CategoriaController::class, 'update']);
     Route::delete('/{negocio}/categorias/{categoria}', [\App\Http\Controllers\CategoriaController::class, 'destroy']);
 
     Route::get('/{negocio}/movimientos',                 [\App\Http\Controllers\MovimientoController::class, 'index']);
     Route::post('/{negocio}/movimientos',                [\App\Http\Controllers\MovimientoController::class, 'store']);
+    Route::put('/{negocio}/movimientos/{movimiento}',    [\App\Http\Controllers\MovimientoController::class, 'update']);
     Route::delete('/{negocio}/movimientos/{movimiento}', [\App\Http\Controllers\MovimientoController::class, 'destroy']);
 
     Route::get('/{negocio}/deudas',         [\App\Http\Controllers\DeudaController::class, 'index']);
     Route::post('/{negocio}/deudas',        [\App\Http\Controllers\DeudaController::class, 'store']);
     Route::put('/{negocio}/deudas/{deuda}', [\App\Http\Controllers\DeudaController::class, 'update']);
+    Route::delete('/{negocio}/deudas/{deuda}', [\App\Http\Controllers\DeudaController::class, 'destroy']);
 });
 
 // =====================================================================

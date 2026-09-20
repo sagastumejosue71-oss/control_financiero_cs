@@ -44,6 +44,31 @@ class CategoriaController extends Controller
         return response()->json(['message' => '✅ Categoría creada', 'categoria' => $categoria], 201);
     }
 
+    public function update(Request $request, int $negocio, int $categoria)
+    {
+        $n = $this->negocioDelUsuario($negocio);
+        $c = $n->categorias()->findOrFail($categoria);
+
+        $validated = $request->validate([
+            'nombre' => [
+                'required', 'string', 'max:255',
+                Rule::unique('categorias')->where(fn ($q) => $q->where('negocio_id', $n->id)->where('tipo', $request->input('tipo', $c->tipo)))->ignore($c->id),
+            ],
+            'tipo' => 'required|in:ingreso,gasto',
+        ], [
+            'nombre.unique' => 'Ya existe una categoría con ese nombre y tipo en este negocio.',
+        ]);
+
+        $c->update($validated);
+
+        $this->auditar($request, 'CATEGORIA_ACTUALIZADA', [
+            'negocio_id' => $n->id,
+            'categoria_id' => $c->id,
+        ]);
+
+        return response()->json(['message' => '✅ Categoría actualizada', 'categoria' => $c]);
+    }
+
     public function destroy(Request $request, int $negocio, int $categoria)
     {
         $n = $this->negocioDelUsuario($negocio);

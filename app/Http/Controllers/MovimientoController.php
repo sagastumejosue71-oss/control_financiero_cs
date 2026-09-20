@@ -73,6 +73,43 @@ class MovimientoController extends Controller
         return response()->json(['message' => '✅ Movimiento registrado', 'movimiento' => $movimiento], 201);
     }
 
+    public function update(Request $request, int $negocio, int $movimiento)
+    {
+        $n = $this->negocioDelUsuario($negocio);
+        $m = $n->movimientos()->findOrFail($movimiento);
+
+        $validated = $request->validate([
+            'cuenta_id' => 'required|integer',
+            'categoria_id' => 'nullable|integer',
+            'tipo' => 'required|in:ingreso,gasto',
+            'monto' => 'required|numeric|min:0.01',
+            'descripcion' => 'nullable|string|max:500',
+            'fecha' => 'required|date',
+        ]);
+
+        abort_unless(
+            $n->cuentas()->whereKey($validated['cuenta_id'])->exists(),
+            422,
+            'La cuenta no pertenece a este negocio.'
+        );
+        if (!empty($validated['categoria_id'])) {
+            abort_unless(
+                $n->categorias()->whereKey($validated['categoria_id'])->exists(),
+                422,
+                'La categoría no pertenece a este negocio.'
+            );
+        }
+
+        $m->update($validated);
+
+        $this->auditar($request, 'MOVIMIENTO_ACTUALIZADO', [
+            'negocio_id' => $n->id,
+            'movimiento_id' => $m->id,
+        ]);
+
+        return response()->json(['message' => '✅ Movimiento actualizado', 'movimiento' => $m->fresh(['cuenta', 'categoria'])]);
+    }
+
     public function destroy(Request $request, int $negocio, int $movimiento)
     {
         $n = $this->negocioDelUsuario($negocio);
