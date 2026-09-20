@@ -485,8 +485,18 @@ async function eliminarCategoria(id) {
 
 // ── Movimientos ──────────────────────────────────────────────────────────
 async function cargarMovimientos() {
-    const json = await _api(`/api/negocios/${negocioActual}/movimientos`);
-    const movimientos = json.data || [];
+    // Trae TODAS las páginas (el backend pagina de 50 en 50) para que no se
+    // pierda de vista ningún movimiento aunque el negocio tenga historial largo.
+    let movimientos = [];
+    let pagina = 1;
+    let ultimaPagina = 1;
+    do {
+        const json = await _api(`/api/negocios/${negocioActual}/movimientos?page=${pagina}`);
+        movimientos = movimientos.concat(json.data || []);
+        ultimaPagina = json.last_page || 1;
+        pagina++;
+    } while (pagina <= ultimaPagina && pagina <= 200);
+
     movimientosCache = movimientos;
     const tbody = document.getElementById('listaMovimientos');
     tbody.innerHTML = '';
